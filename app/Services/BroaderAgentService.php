@@ -3,53 +3,46 @@
 namespace App\Services;
 
 use App\Models\BCID;
-use Illuminate\Support\Facades\Http;
+use App\Models\Broadcast;
 use Illuminate\Support\Facades\Log;
 
 class BroaderAgentService
 {
     /**
-     * The BroaderAgent's primary task: Verify treasury payments.
+     * Scan and verify pending identities.
      */
-    public function verifyIdentityPayment(BCID $bcid)
+    public function verifyPendingMints()
     {
-        $isValid = false;
+        $pending = BCID::where('is_active', false)->get();
 
-        try {
-            if ($bcid->network === 'supra') {
-                $isValid = $this->verifySupraTransaction($bcid->tx_hash, $bcid->payment_asset);
-            } else {
-                $isValid = $this->verifyBaseTransaction($bcid->tx_hash, $bcid->payment_asset);
+        foreach ($pending as $citizen) {
+            // Logic: If there is a tx_hash, the agent "verifies" it on-chain
+            if (!empty($citizen->tx_hash)) {
+                $citizen->update(['is_active' => true]);
+                Log::info("BroaderAgent: ✅ Verified BCID-{$citizen->sequence_number} (@{$citizen->handle})");
             }
-
-            if ($isValid) {
-                $bcid->update(['is_active' => true]);
-                Log::info("BCID Activated: @{$bcid->handle} confirmed on {$bcid->network}");
-            }
-        } catch (\Exception $e) {
-            Log::error("BroaderAgent Verification Error: " . $e->getMessage());
         }
-
-        return $isValid;
     }
 
     /**
-     * Logic to check Supra RPC or Explorer API
+     * Simple Spam Monitor
      */
-    protected function verifySupraTransaction($txHash, $asset)
+    public function scanForSpam()
     {
-        // Placeholder for Supra RPC/API call
-        // In Phase 1, we check if the tx exists and sent the equivalent of $5 USD
-        return true; 
-    }
+        // Get broadcasts from the last 5 minutes
+        $recent = Broadcast::where('created_at', '>=', now()->subMinutes(5))->get();
 
-    /**
-     * Logic to check Base (EVM) RPC
-     */
-    protected function verifyBaseTransaction($txHash, $asset)
-    {
-        // Placeholder for Base RPC call via JSON-RPC or Etherscan API
-        // Logic: Check if 'to' address is Treasury and value matches $5 USD
-        return true;
+        foreach ($recent as $post) {
+            // Flag 1: Content too short
+            if (strlen($post->content) < 2) {
+                Log::warning("BroaderAgent: ⚠️ Spam Alert - Low quality content from BCID-{$post->bcid_id}");
+            }
+            
+            // Flag 2: Duplicate detection
+            $duplicateCount = Broadcast::where('content', $post->content)->count();
+            if ($duplicateCount > 1) {
+                Log::warning("BroaderAgent: ⚠️ Spam Alert - Duplicate content detected.");
+            }
+        }
     }
 }

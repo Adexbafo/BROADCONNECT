@@ -18,3 +18,7 @@ Route::get('/treasury', [TreasuryController::class, 'index'])->name('treasury');
 
 // This allows for URLs like 127.0.0.1:8000/u/adex
 Route::get('/u/{handle}', [ProfileController::class, 'show'])->name('profile.show');
+
+Route::get('/feed', function () {
+    return view('feed');
+})->name('feed');
