@@ -10,27 +10,34 @@ use Illuminate\Support\Facades\Session;
 class ProtocolFeed extends Component
 {
     public $content = '';
+    public $replyingTo = null;
+    public $replyContent = '';
 
     protected $rules = [
         'content' => 'required|max:280',
     ];
 
     public function postVibe()
-{
-    if (!session()->has('bcid_id')) return;
+    {
+        if (!session()->has('bcid_id')) return;
 
-    \App\Models\Broadcast::create([
-        'bcid_id' => session('bcid_id'),
-        'content' => $this->content,
-        'type' => 'post'
-    ]);
+        $this->validate();
 
-    $this->content = '';
-}
+        Broadcast::create([
+            'bcid_id' => session('bcid_id'),
+            'content' => $this->content,
+            'type' => 'post'
+        ]);
+
+        $this->content = '';
+        $this->dispatch('vibe-posted');
+    }
 
     public function toggleLike($broadcastId)
     {
-        $userId = 1; // Simulated current user
+        if (!session()->has('bcid_id')) return;
+
+        $userId = session('bcid_id');
 
         $existing = Interaction::where('bcid_id', $userId)
             ->where('broadcast_id', $broadcastId)
@@ -48,53 +55,46 @@ class ProtocolFeed extends Component
         }
     }
 
-    public function render()
-{
-    return view('livewire.protocol-feed', [
-        'broadcasts' => Broadcast::with(['bcid', 'likes', 'replies'])
-            ->whereNull('parent_id') // Only show top-level posts
-            ->latest()
-            ->get()
-    ]);
-}
-
     public function rebroadcast($broadcastId)
-{
-    // A rebroadcast is just a special interaction
-    \App\Models\Interaction::updateOrCreate([
-        'bcid_id' => 1,
-        'broadcast_id' => $broadcastId,
-        'type' => 'rebroadcast'
-    ]);
-}
+    {
+        if (!session()->has('bcid_id')) return;
 
-    public function quote($broadcastId)
-{
-    // Quoting usually opens a text box, let's reuse the reply logic 
-    // but we can tag it as a quote in the future.
-    $this->replyingTo = $broadcastId; 
-}
+        Interaction::updateOrCreate([
+            'bcid_id' => session('bcid_id'),
+            'broadcast_id' => $broadcastId,
+            'type' => 'rebroadcast'
+        ]);
+    }
 
-   public $replyingTo = null; // Stores the ID of the broadcast being replied to
-public $replyContent = '';
+    public function setReply($id)
+    {
+        $this->replyingTo = ($this->replyingTo === $id) ? null : $id;
+    }
 
-public function setReply($id)
-{
-    $this->replyingTo = $id;
-}
+    public function postReply($parentId)
+    {
+        if (!session()->has('bcid_id')) return;
 
-public function postReply($parentId)
-{
-    $this->validate(['replyContent' => 'required|max:280']);
+        $this->validate(['replyContent' => 'required|max:280']);
 
-    \App\Models\Broadcast::create([
-        'bcid_id' => 1, 
-        'content' => $this->replyContent,
-        'parent_id' => $parentId,
-        'type' => 'quote' // Add a 'type' column to your broadcasts table to distinguish
-    ]);
+        Broadcast::create([
+            'bcid_id' => session('bcid_id'),
+            'content' => $this->replyContent,
+            'parent_id' => $parentId,
+            'type' => 'reply'
+        ]);
 
-    $this->replyContent = '';
-    $this->replyingTo = null;
-}
+        $this->replyContent = '';
+        $this->replyingTo = null;
+    }
+
+    public function render()
+    {
+        return view('livewire.protocol-feed', [
+            'broadcasts' => Broadcast::with(['bcid', 'likes', 'replies', 'interactions'])
+                ->whereNull('parent_id')
+                ->latest()
+                ->paginate(10)
+        ]);
+    }
 }
