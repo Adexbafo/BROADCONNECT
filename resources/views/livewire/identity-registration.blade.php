@@ -1,39 +1,51 @@
-<div class="p-4 max-w-md mx-auto bg-white rounded-xl shadow-md space-y-4 border border-gray-100 mt-10">
-    <div class="text-center">
-        <h2 class="text-xl font-bold text-gray-800">Claim Your BCID</h2>
-        <p class="text-sm text-gray-500">Registration Fee: $5 USD</p>
+<div class="bg-white p-8 rounded-3xl shadow-2xl border border-gray-100 w-full max-w-md mx-auto">
+    <div class="text-center mb-6">
+        <h2 class="text-2xl font-black tracking-tighter uppercase">Claim Your BCID</h2>
+        <div class="flex justify-center space-x-2 mt-1">
+            <span class="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">Registration: FREE</span>
+            <span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Fee: $0.25</span>
+        </div>
     </div>
 
-    @if($message)
-        <div class="p-3 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-            {{ $message }}
+    <!-- WALLET STATUS INDICATOR -->
+    @if(session()->has('pending_wallet'))
+        <div class="mb-6 flex items-center justify-between bg-amber-50 border border-amber-100 p-3 rounded-xl">
+            <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                <span class="text-[10px] font-mono text-amber-800">{{ Str::limit(session('pending_wallet'), 12) }}</span>
+            </div>
+            <span class="text-[9px] font-black text-amber-600 uppercase">Awaiting Proof</span>
         </div>
     @endif
 
-    <form wire:submit.prevent="claim" class="space-y-4">
+    <!-- INPUTS -->
+    <div class="space-y-4">
         <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase">Username Handle</label>
-            <input type="text" wire:model="handle" placeholder="e.g. adex" 
-                   class="w-full p-3 mt-1 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-            @error('handle') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Username Handle</label>
+            <input type="text" wire:model="handle" 
+                {{ !session()->has('pending_wallet') ? 'disabled' : '' }}
+                class="w-full p-4 mt-1 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all {{ !session()->has('pending_wallet') ? 'opacity-50 cursor-not-allowed' : '' }}"
+                placeholder="e.g. adex">
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-            <button type="button" wire:click="$set('network', 'base')" 
-                    class="p-2 rounded-lg border {{ $network == 'base' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600' }}">Base</button>
-            <button type="button" wire:click="$set('network', 'supra')" 
-                    class="p-2 rounded-lg border {{ $network == 'supra' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600' }}">Supra</button>
+        <div class="flex bg-gray-100 p-1 rounded-xl">
+            <button wire:click="$set('network', 'Base')" class="flex-1 py-2 rounded-lg text-xs font-bold transition {{ $network == 'Base' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500' }}">Base</button>
+            <button wire:click="$set('network', 'Supra')" class="flex-1 py-2 rounded-lg text-xs font-bold transition {{ $network == 'Supra' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500' }}">Supra</button>
         </div>
 
         <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase">Transaction Hash ($5 Proof)</label>
-            <input type="text" wire:model="tx_hash" placeholder="0x..." 
-                   class="w-full p-3 mt-1 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs">
-            @error('tx_hash') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Transaction Hash ($0.25 Proof)</label>
+            <input type="text" wire:model="tx_hash" 
+                {{ !session()->has('pending_wallet') ? 'disabled' : '' }}
+                class="w-full p-4 mt-1 bg-gray-50 border border-gray-200 rounded-2xl text-[10px] font-mono {{ !session()->has('pending_wallet') ? 'opacity-50 cursor-not-allowed' : '' }}"
+                placeholder="0x...">
         </div>
+    </div>
 
-        <button type="submit" class="w-full bg-black text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform">
-            MINT IDENTITY
-        </button>
-    </form>
+    <!-- MINT BUTTON -->
+    <button wire:click="claim" 
+        {{ !session()->has('pending_wallet') ? 'disabled' : '' }}
+        class="w-full mt-8 bg-black text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-900 transition-all active:scale-95 shadow-2xl {{ !session()->has('pending_wallet') ? 'opacity-50 grayscale cursor-not-allowed' : '' }}">
+        Mint Identity
+    </button>
 </div>

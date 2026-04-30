@@ -2,45 +2,42 @@
 
 namespace App\Livewire;
 
-use App\Models\BCID;
-use App\Services\BroaderAgentService;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use App\Models\BCID;
 
 class IdentityRegistration extends Component
 {
     public $handle;
+    public $network = 'Base';
     public $tx_hash;
-    public $payment_asset = 'USDC';
-    public $network = 'base';
-    public $message = '';
-
-    protected $rules = [
-        'handle' => 'required|alpha_dash|unique:bcids,handle|max:20',
-        'tx_hash' => 'required|string|unique:bcids,tx_hash',
-        'payment_asset' => 'required|in:USDC,SUPRA,ETH',
-        'network' => 'required|in:base,supra',
-    ];
+    public $platform_fee = 0.25; // Hardcoded $0.25 Platform Fee
 
     public function claim()
-{
-    $this->validate();
+    {
+        if (!session()->has('pending_wallet')) {
+            $this->addError('handle', 'Connect wallet first.');
+            return;
+        }
 
-    $bcid = BCID::create([
-        // This will now pass NULL if you aren't logged in, preventing the error
-        'user_id' => Auth::id(), 
-        'handle' => strtolower($this->handle),
-        'tx_hash' => $this->tx_hash,
-        'payment_asset' => $this->payment_asset,
-        'network' => $this->network,
-        'is_active' => false,
-    ]);
+        $this->validate([
+            'handle' => 'required|min:3|unique:bcids,handle',
+            'tx_hash' => 'required|regex:/^0x([A-Fa-f0-9]{64})$/',
+        ]);
 
-    // This uses the BCID-N logic we added to the model
-    $this->message = "Success! You are assigned BCID-{$bcid->sequence_number}. BroaderAgent is verifying...";
-    
-    $this->reset(['handle', 'tx_hash']);
-}
+        // Logic: Free registration + $0.25 fee verification
+        // In your 'Glass Box' logic, this hash must represent a $0.25 transfer
+        $citizen = BCID::create([
+            'handle' => $this->handle,
+            'wallet_address' => session('pending_wallet'),
+            'network' => $this->network,
+            'tx_hash' => $this->tx_hash,
+            'fee_paid' => $this->platform_fee,
+            'sequence_number' => BCID::count() + 1,
+        ]);
+
+        session(['bcid_id' => $citizen->id, 'handle' => $citizen->handle]);
+        return redirect()->route('feed');
+    }
 
     public function render()
     {

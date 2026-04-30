@@ -16,17 +16,17 @@ class ProtocolFeed extends Component
     ];
 
     public function postVibe()
-    {
-        $this->validate();
+{
+    if (!session()->has('bcid_id')) return;
 
-        Broadcast::create([
-            'bcid_id' => 1, // Simulated current user
-            'content' => $this->content,
-        ]);
+    \App\Models\Broadcast::create([
+        'bcid_id' => session('bcid_id'),
+        'content' => $this->content,
+        'type' => 'post'
+    ]);
 
-        $this->content = '';
-        session()->flash('message', 'Broadcast sent!');
-    }
+    $this->content = '';
+}
 
     public function toggleLike($broadcastId)
     {

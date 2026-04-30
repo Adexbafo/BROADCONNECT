@@ -22,3 +22,7 @@ Route::get('/u/{handle}', [ProfileController::class, 'show'])->name('profile.sho
 Route::get('/feed', function () {
     return view('feed');
 })->name('feed');
+
+Route::get('/agent/logs', function () {
+    return view('agent-logs');
+})->name('agent.logs');
